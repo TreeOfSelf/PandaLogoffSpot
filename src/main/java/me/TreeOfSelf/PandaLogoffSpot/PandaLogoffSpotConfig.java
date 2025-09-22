@@ -16,7 +16,7 @@ public class PandaLogoffSpotConfig {
     private static ConfigData config = new ConfigData();
 
     public static class ConfigData {
-        public int nameColor = 0xF08080;
+        public String nameColor = "#F08080";
         public boolean showCoords = true;
         public int durationSeconds = 300;
         public float scale = 0.75f;
@@ -43,7 +43,11 @@ public class PandaLogoffSpotConfig {
     }
 
     public static int getNameColor() {
-        return config.nameColor;
+        try {
+            return Integer.parseInt(config.nameColor.replace("#", ""), 16);
+        } catch (Exception e) {
+            return 0xF08080;
+        }
     }
 
     public static boolean shouldShowCoords() {
