@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class PandaLogoffSpotConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("panda-logoff-spot.json").toFile();
+    private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("PandaLogoffSpot.json").toFile();
 
     private static ConfigData config = new ConfigData();
 
