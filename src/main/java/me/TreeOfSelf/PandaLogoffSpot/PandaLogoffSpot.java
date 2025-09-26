@@ -1,7 +1,9 @@
 package me.TreeOfSelf.PandaLogoffSpot;
 
+import eu.pb4.polymer.virtualentity.api.elements.TextDisplayElement;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.decoration.DisplayEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.MutableText;
@@ -11,12 +13,10 @@ import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import eu.pb4.polymer.virtualentity.api.ElementHolder;
-import eu.pb4.polymer.virtualentity.api.attachment.ChunkAttachment;
-import eu.pb4.polymer.virtualentity.api.elements.TextDisplayElement;
+import eu.pb4.polymer.virtualentity.api.attachment.ManualAttachment;
+import me.drex.vanish.api.VanishAPI;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -37,19 +37,41 @@ public class PandaLogoffSpot implements ModInitializer {
 	}
 
 	private void onLeave(ServerPlayerEntity player) {
+		if (FabricLoader.getInstance().isModLoaded("melius-vanish") && VanishAPI.isVanished(player)) {
+			return;
+		}
+
 		UUID playerId = player.getUuid();
 		String playerName = player.getGameProfile().getName();
-		Vec3d position = player.getPos().add(new Vec3d(0,player.getBoundingBox(player.getPose()).maxY / 2, 0));
+		Vec3d position = player.getPos().add(new Vec3d(0, player.getBoundingBox(player.getPose()).maxY / 2, 0));
 
-		removeDisplay(playerId);
-		createLogoffDisplay(playerId, playerName, position, player);
+		Set<ServerPlayerEntity> nearbyPlayers = getNearbyPlayers(player, 50.0);
+
+		if (!nearbyPlayers.isEmpty()) {
+			removeDisplay(playerId);
+			createLogoffDisplay(playerId, playerName, position, nearbyPlayers, player);
+		}
 	}
 
 	private void onJoin(ServerPlayerEntity player) {
 		removeDisplay(player.getUuid());
 	}
 
-	private void createLogoffDisplay(UUID playerId, String playerName, Vec3d position, ServerPlayerEntity player) {
+	private Set<ServerPlayerEntity> getNearbyPlayers(ServerPlayerEntity logoffPlayer, double radius) {
+		Set<ServerPlayerEntity> nearbyPlayers = new HashSet<>();
+
+		for (ServerPlayerEntity otherPlayer : logoffPlayer.getServer().getPlayerManager().getPlayerList()) {
+			if (otherPlayer != logoffPlayer &&
+					otherPlayer.getWorld() == logoffPlayer.getWorld() &&
+					otherPlayer.getPos().distanceTo(logoffPlayer.getPos()) <= radius) {
+				nearbyPlayers.add(otherPlayer);
+			}
+		}
+
+		return nearbyPlayers;
+	}
+
+	private void createLogoffDisplay(UUID playerId, String playerName, Vec3d position, Set<ServerPlayerEntity> authorizedViewers, ServerPlayerEntity logoffPlayer) {
 		ElementHolder holder = new ElementHolder();
 		TextDisplayElement textElement = new TextDisplayElement();
 
@@ -69,13 +91,21 @@ public class PandaLogoffSpot implements ModInitializer {
 		textElement.setBillboardMode(DisplayEntity.BillboardMode.CENTER);
 
 		holder.addElement(textElement);
-		ChunkAttachment attachment = (ChunkAttachment) ChunkAttachment.ofTicking(holder, player.getWorld(), position);
+
+		ManualAttachment attachment = new ManualAttachment(holder, logoffPlayer.getWorld(), () -> position);
+
+		Set<UUID> authorizedUuids = new HashSet<>();
+
+		for (ServerPlayerEntity viewer : authorizedViewers) {
+			authorizedUuids.add(viewer.getUuid());
+			attachment.startWatching(viewer);
+		}
 
 		ScheduledFuture<?> removalTask = scheduler.schedule(() -> {
 			removeDisplay(playerId);
 		}, PandaLogoffSpotConfig.getDurationSeconds(), TimeUnit.SECONDS);
 
-		LogoffDisplay display = new LogoffDisplay(holder, attachment, removalTask);
+		LogoffDisplay display = new LogoffDisplay(holder, attachment, authorizedUuids, removalTask);
 		activeDisplays.put(playerId, display);
 	}
 
@@ -89,12 +119,14 @@ public class PandaLogoffSpot implements ModInitializer {
 
 	private static class LogoffDisplay {
 		final ElementHolder holder;
-		final ChunkAttachment attachment;
+		final ManualAttachment attachment;
+		final Set<UUID> authorizedViewers;
 		final ScheduledFuture<?> removalTask;
 
-		LogoffDisplay(ElementHolder holder, ChunkAttachment attachment, ScheduledFuture<?> removalTask) {
+		LogoffDisplay(ElementHolder holder, ManualAttachment attachment, Set<UUID> authorizedViewers, ScheduledFuture<?> removalTask) {
 			this.holder = holder;
 			this.attachment = attachment;
+			this.authorizedViewers = authorizedViewers;
 			this.removalTask = removalTask;
 		}
 	}
