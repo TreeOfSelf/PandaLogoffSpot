@@ -45,7 +45,10 @@ public class PandaLogoffSpot implements ModInitializer {
 		String playerName = player.getGameProfile().getName();
 		Vec3d position = player.getPos().add(new Vec3d(0, player.getBoundingBox(player.getPose()).maxY / 2, 0));
 
-		Set<ServerPlayerEntity> nearbyPlayers = getNearbyPlayers(player, 50.0);
+		int viewDistance = player.getServer().getPlayerManager().getViewDistance();
+		double radiusBlocks = viewDistance * 16.0;
+
+		Set<ServerPlayerEntity> nearbyPlayers = getNearbyPlayers(player, radiusBlocks);
 
 		if (!nearbyPlayers.isEmpty()) {
 			removeDisplay(playerId);
@@ -62,9 +65,18 @@ public class PandaLogoffSpot implements ModInitializer {
 
 		for (ServerPlayerEntity otherPlayer : logoffPlayer.getServer().getPlayerManager().getPlayerList()) {
 			if (otherPlayer != logoffPlayer &&
-					otherPlayer.getWorld() == logoffPlayer.getWorld() &&
-					otherPlayer.getPos().distanceTo(logoffPlayer.getPos()) <= radius) {
-				nearbyPlayers.add(otherPlayer);
+					otherPlayer.getWorld() == logoffPlayer.getWorld()) {
+
+				Vec3d logoffPos = logoffPlayer.getPos();
+				Vec3d otherPos = otherPlayer.getPos();
+
+				double deltaX = logoffPos.x - otherPos.x;
+				double deltaZ = logoffPos.z - otherPos.z;
+				double horizontalDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+
+				if (horizontalDistance <= radius) {
+					nearbyPlayers.add(otherPlayer);
+				}
 			}
 		}
 
