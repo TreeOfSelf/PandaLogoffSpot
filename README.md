@@ -5,6 +5,7 @@
 ## Description
 
 A simple and configurable drop-in mod to create a virtual text entity where a player logs off. Makes combat logging less effective and people with hacked clients less cool.
+The text will be adjusted to match the height of the pose the player had when the logged off, (standing, crouching, crawling, swimming).
 
 ## Configuring
 
