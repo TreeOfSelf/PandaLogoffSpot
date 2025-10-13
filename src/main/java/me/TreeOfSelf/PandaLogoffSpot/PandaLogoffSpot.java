@@ -42,10 +42,10 @@ public class PandaLogoffSpot implements ModInitializer {
 		}
 
 		UUID playerId = player.getUuid();
-		String playerName = player.getGameProfile().getName();
-		Vec3d position = player.getPos().add(new Vec3d(0, player.getBoundingBox(player.getPose()).maxY / 2, 0));
+		String playerName = player.getGameProfile().name();
+		Vec3d position = player.getEntityPos().add(new Vec3d(0, player.getBoundingBox(player.getPose()).maxY / 2, 0));
 
-		int viewDistance = player.getServer().getPlayerManager().getViewDistance();
+		int viewDistance = player.getEntityWorld().getServer().getPlayerManager().getViewDistance();
 		double radiusBlocks = viewDistance * 16.0;
 
 		Set<ServerPlayerEntity> nearbyPlayers = getNearbyPlayers(player, radiusBlocks);
@@ -63,12 +63,12 @@ public class PandaLogoffSpot implements ModInitializer {
 	private Set<ServerPlayerEntity> getNearbyPlayers(ServerPlayerEntity logoffPlayer, double radius) {
 		Set<ServerPlayerEntity> nearbyPlayers = new HashSet<>();
 
-		for (ServerPlayerEntity otherPlayer : logoffPlayer.getServer().getPlayerManager().getPlayerList()) {
+		for (ServerPlayerEntity otherPlayer : logoffPlayer.getEntityWorld().getServer().getPlayerManager().getPlayerList()) {
 			if (otherPlayer != logoffPlayer &&
-					otherPlayer.getWorld() == logoffPlayer.getWorld()) {
+					otherPlayer.getEntityWorld() == logoffPlayer.getEntityWorld()) {
 
-				Vec3d logoffPos = logoffPlayer.getPos();
-				Vec3d otherPos = otherPlayer.getPos();
+				Vec3d logoffPos = logoffPlayer.getEntityPos();
+				Vec3d otherPos = otherPlayer.getEntityPos();
 
 				double deltaX = logoffPos.x - otherPos.x;
 				double deltaZ = logoffPos.z - otherPos.z;
@@ -104,7 +104,7 @@ public class PandaLogoffSpot implements ModInitializer {
 
 		holder.addElement(textElement);
 
-		ManualAttachment attachment = new ManualAttachment(holder, logoffPlayer.getWorld(), () -> position);
+		ManualAttachment attachment = new ManualAttachment(holder, logoffPlayer.getEntityWorld(), () -> position);
 
 		Set<UUID> authorizedUuids = new HashSet<>();
 
