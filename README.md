@@ -1,4 +1,4 @@
-<img width="128" height="128" alt="icon" src="https://github.com/user-attachments/assets/7c3b62a5-ac7a-4af8-bf4d-fd78c0eae6af" />
+<img width="128" height="128" alt="icon" src="https://github.com/user-attachments/assets/4879c03a-0aef-4fcf-85aa-495612349a21" />
 
 # Panda Logoff Spot
 
@@ -6,6 +6,10 @@
 
 A simple and configurable drop-in mod to create a virtual text entity where a player logs off. Makes combat logging less effective and people with hacked clients less cool.
 The text will be adjusted to match the height of the pose the player had when the logged off, (standing, crouching, crawling, swimming).
+
+## Media
+
+<img width="341" height="455" alt="image" src="https://github.com/user-attachments/assets/5d8767f5-d9d5-45ba-a26e-54cdc877136f" />
 
 ## Configuring
 
