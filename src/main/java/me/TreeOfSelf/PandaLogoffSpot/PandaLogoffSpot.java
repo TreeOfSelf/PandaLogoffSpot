@@ -1,22 +1,26 @@
 package me.TreeOfSelf.PandaLogoffSpot;
 
+import eu.pb4.polymer.virtualentity.api.ElementHolder;
+import eu.pb4.polymer.virtualentity.api.attachment.ManualAttachment;
 import eu.pb4.polymer.virtualentity.api.elements.TextDisplayElement;
+import me.drex.vanish.api.VanishAPI;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.entity.decoration.DisplayEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import eu.pb4.polymer.virtualentity.api.ElementHolder;
-import eu.pb4.polymer.virtualentity.api.attachment.ManualAttachment;
-import me.drex.vanish.api.VanishAPI;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -36,19 +40,20 @@ public class PandaLogoffSpot implements ModInitializer {
 		ServerPlayerEvents.LEAVE.register(this::onLeave);
 	}
 
-	private void onLeave(ServerPlayerEntity player) {
+	private void onLeave(ServerPlayer player) {
 		if (FabricLoader.getInstance().isModLoaded("melius-vanish") && VanishAPI.isVanished(player)) {
 			return;
 		}
 
-		UUID playerId = player.getUuid();
+		UUID playerId = player.getUUID();
 		String playerName = player.getGameProfile().name();
-		Vec3d position = player.getEntityPos().add(new Vec3d(0, player.getBoundingBox(player.getPose()).maxY / 2, 0));
+		float halfHeight = player.getDimensions(player.getPose()).height() / 2.0F;
+		Vec3 position = player.position().add(0.0, halfHeight, 0.0);
 
-		int viewDistance = player.getEntityWorld().getServer().getPlayerManager().getViewDistance();
+		int viewDistance = player.level().getServer().getPlayerList().getViewDistance();
 		double radiusBlocks = viewDistance * 16.0;
 
-		Set<ServerPlayerEntity> nearbyPlayers = getNearbyPlayers(player, radiusBlocks);
+		Set<ServerPlayer> nearbyPlayers = getNearbyPlayers(player, radiusBlocks);
 
 		if (!nearbyPlayers.isEmpty()) {
 			removeDisplay(playerId);
@@ -56,19 +61,19 @@ public class PandaLogoffSpot implements ModInitializer {
 		}
 	}
 
-	private void onJoin(ServerPlayerEntity player) {
-		removeDisplay(player.getUuid());
+	private void onJoin(ServerPlayer player) {
+		removeDisplay(player.getUUID());
 	}
 
-	private Set<ServerPlayerEntity> getNearbyPlayers(ServerPlayerEntity logoffPlayer, double radius) {
-		Set<ServerPlayerEntity> nearbyPlayers = new HashSet<>();
+	private Set<ServerPlayer> getNearbyPlayers(ServerPlayer logoffPlayer, double radius) {
+		Set<ServerPlayer> nearbyPlayers = new HashSet<>();
 
-		for (ServerPlayerEntity otherPlayer : logoffPlayer.getEntityWorld().getServer().getPlayerManager().getPlayerList()) {
+		for (ServerPlayer otherPlayer : logoffPlayer.level().getServer().getPlayerList().getPlayers()) {
 			if (otherPlayer != logoffPlayer &&
-					otherPlayer.getEntityWorld() == logoffPlayer.getEntityWorld()) {
+					otherPlayer.level() == logoffPlayer.level()) {
 
-				Vec3d logoffPos = logoffPlayer.getEntityPos();
-				Vec3d otherPos = otherPlayer.getEntityPos();
+				Vec3 logoffPos = logoffPlayer.position();
+				Vec3 otherPos = otherPlayer.position();
 
 				double deltaX = logoffPos.x - otherPos.x;
 				double deltaZ = logoffPos.z - otherPos.z;
@@ -83,33 +88,33 @@ public class PandaLogoffSpot implements ModInitializer {
 		return nearbyPlayers;
 	}
 
-	private void createLogoffDisplay(UUID playerId, String playerName, Vec3d position, Set<ServerPlayerEntity> authorizedViewers, ServerPlayerEntity logoffPlayer) {
+	private void createLogoffDisplay(UUID playerId, String playerName, Vec3 position, Set<ServerPlayer> authorizedViewers, ServerPlayer logoffPlayer) {
 		ElementHolder holder = new ElementHolder();
 		TextDisplayElement textElement = new TextDisplayElement();
 
-		Text nameText = Text.literal(playerName).styled(style -> style.withColor(PandaLogoffSpotConfig.getNameColor()).withBold(true));
-		Text logoffText = Text.literal("\nLogoff Spot").styled(style -> style.withColor(0xFFFFFF));
+		Component nameText = Component.literal(playerName).withStyle(style -> style.withColor(PandaLogoffSpotConfig.getNameColor()).withBold(true));
+		Component logoffText = Component.literal("\nLogoff Spot").withStyle(style -> style.withColor(0xFFFFFF));
 
-		MutableText displayText = Text.empty().append(nameText).append(logoffText);
+		MutableComponent displayText = Component.empty().append(nameText).append(logoffText);
 
 		if (PandaLogoffSpotConfig.shouldShowCoords()) {
-			Text coordsText = Text.literal(String.format("\n%.1f, %.1f, %.1f", position.x, position.y, position.z))
-					.styled(style -> style.withColor(0xAAAAAA));
+			Component coordsText = Component.literal(String.format("\n%.1f, %.1f, %.1f", position.x, position.y, position.z))
+					.withStyle(style -> style.withColor(0xAAAAAA));
 			displayText = displayText.append(coordsText);
 		}
 
 		textElement.setText(displayText);
 		textElement.setScale(new Vector3f(PandaLogoffSpotConfig.getScale(), PandaLogoffSpotConfig.getScale(), PandaLogoffSpotConfig.getScale()));
-		textElement.setBillboardMode(DisplayEntity.BillboardMode.CENTER);
+		textElement.setBillboardMode(Display.BillboardConstraints.CENTER);
 
 		holder.addElement(textElement);
 
-		ManualAttachment attachment = new ManualAttachment(holder, logoffPlayer.getEntityWorld(), () -> position);
+		ManualAttachment attachment = new ManualAttachment(holder, logoffPlayer.level(), () -> position);
 
 		Set<UUID> authorizedUuids = new HashSet<>();
 
-		for (ServerPlayerEntity viewer : authorizedViewers) {
-			authorizedUuids.add(viewer.getUuid());
+		for (ServerPlayer viewer : authorizedViewers) {
+			authorizedUuids.add(viewer.getUUID());
 			attachment.startWatching(viewer);
 		}
 
