@@ -21,10 +21,10 @@ repositories {
 }
 
 dependencies {
-	compileOnly "maven.modrinth:vanish:1.6.14+26.2"
+	compileOnly "maven.modrinth:vanish:1.6.16+26.3"
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation include("eu.pb4:polymer-virtual-entity:0.17.0+26.2-rc-2")
+	implementation include("eu.pb4:polymer-virtual-entity:0.18.2+26.3")
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
