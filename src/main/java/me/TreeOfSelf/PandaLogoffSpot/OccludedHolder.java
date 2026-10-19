@@ -16,9 +16,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 // An ElementHolder that only shows to players PandaOcclusion says could see it (PandaOcclusionApi.canSee, the same
-// check it hides entities behind walls with), rechecked every few ticks. Without PandaOcclusion it is a plain ElementHolder.
+// check it hides entities behind walls with), asked every tick like entities are (PandaOcclusion caches the line check
+// itself on its own interval). Without PandaOcclusion it is a plain ElementHolder.
 public class OccludedHolder extends ElementHolder {
-	private static final int RECHECK_TICKS = 4;
 	private static final MethodHandle CAN_SEE = findCanSee();
 
 	private final ServerLevel level;
@@ -28,7 +28,7 @@ public class OccludedHolder extends ElementHolder {
 	// Everyone the attachment wants this shown to, including the ones it is hidden from right now. Polymer asks only
 	// once (when a player starts tracking the chunk), so a refused player has to be remembered and asked about again.
 	private final Set<ServerGamePacketListenerImpl> wanted = new HashSet<>();
-	private long nextCheck;
+	private long lastCheck = -1;
 
 	// The box PandaOcclusion checks: width x height, centered on the holder's position moved up by yOffset
 	public OccludedHolder(ServerLevel level, double width, double height, double yOffset) {
@@ -59,11 +59,12 @@ public class OccludedHolder extends ElementHolder {
 		if (CAN_SEE == null || this.wanted.isEmpty()) {
 			return;
 		}
+		// Once per server tick, even if the holder gets ticked more often
 		long now = this.level.getServer().getTickCount();
-		if (now < this.nextCheck) {
+		if (now == this.lastCheck) {
 			return;
 		}
-		this.nextCheck = now + RECHECK_TICKS;
+		this.lastCheck = now;
 		this.wanted.removeIf(player -> player.getPlayer().hasDisconnected());
 		for (ServerGamePacketListenerImpl player : new ArrayList<>(this.wanted)) {
 			boolean watching = this.getWatchingPlayers().contains(player);
